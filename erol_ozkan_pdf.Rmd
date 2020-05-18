@@ -9,10 +9,10 @@ header-includes:
 date: "`r format(Sys.time(), '%d %B %Y')`"
 author: | 
   | Erol ÖZKAN
-  | Hacettepe University - Computer Engineering
+  | Hacettepe University, Computer Engineering Department
   | erolozkan@outlook.com
 abstract: |
-  In this work, we aim to predict what kind of people are likely to survive in the Titanic dataset. In short, we use several data mining methods to predict the survived passengers in the testing dataset. We do explanatory data analysis and create some illustrative data visualization plots. Then, we do feature engineering and missing value imputation to create more meaningful variables. Finally, we build RandomForrest, SVM and GBM models to predict the Survival variable in the testing datasets. We compare these there results.
+  In this work, we aim to predict what kind of people are likely to survive in the Titanic dataset. In short, we use several data mining methods to predict the survived passengers in the testing dataset. We do explanatory data analysis and create some illustrative data visualization plots. Then, we do feature engineering and missing value imputation to create more meaningful variables. Finally, we build RandomForrest, SVM and GBM models to predict the Survival variable in the testing datasets. We compare these results at the end.
 ---
 
 # INTRODUCTION
@@ -23,7 +23,7 @@ Titanic dataset is used for this project. It contains the survival information o
 
 # FIRST STEPS
 ## Import Required Packages
-```{r error=FALSE, warning=FALSE, message=FALSE}
+```{r warning=FALSE, message=FALSE}
 library('ggplot2') 
 library('ggthemes') 
 library('scales') 
@@ -35,9 +35,11 @@ library('randomForest')
 library('gridExtra')
 library('corrplot')
 library('Hmisc')
-#library('ROCR')
+library('ROCR')
 ```
 ## Read Data
+Let's read the training and testing datasets. Then, combine them.
+
 ```{r}
 train <- read.csv('dataset/train.csv', stringsAsFactors = F, na.strings = c("NA", "")) # Read train dataset.
 test  <- read.csv('dataset/test.csv', stringsAsFactors = F, na.strings = c("NA", "")) # Read test dataset.
@@ -46,16 +48,18 @@ full  <- bind_rows(train, test) # Concatinate train and test dataset
 
 # EXPLORATORY DATA ANALYSIS
 ## Check Data
-Let's check the dataset first.
+Let's check the dataset.
+
 ```{r}
 str(full)
 ```
+
 There are 1309 observations in total. The training dataset has 891, the test dataset has 418 observations. Note that “Survived” variable is missing from the testing dataset.
 
 ## Describe Variables
 Description of the variables are shown below.
 
-```{r echo=FALSE,fig.cap="Description of the Dataset", fig.align="center", out.width = '75%'}
+```{r echo=FALSE, fig.cap="Description of the Dataset", fig.align="center", out.width = '75%'}
 knitr::include_graphics("images/dataset.png")
 ```
 
@@ -81,8 +85,7 @@ full$Embarked <- as.factor(full$Embarked)
 ### Survived
 Survived variable describes the survived people.
 
-```{r echo=FALSE,fig.cap="Survival of People", fig.align="center", out.width = '75%'}
-knitr::opts_chunk$set(fig.pos = '!h')
+```{r fig.cap="Survival of People", fig.align="center", out.width = '75%'}
 ggplot(full[!is.na(full$Survived),], aes(x = Survived, fill = Survived)) +
   geom_bar(stat='count') +
   labs(x = 'How many people died and survived on the Titanic?') +
@@ -94,7 +97,7 @@ It is clear that 549 people died and 342 people survived in the training dataset
 ### Sex
 Let’s visualize the Sex variable.
 
-```{r echo=FALSE,fig.cap="Survival rate of Male/Female Passangers", fig.align="center", out.width = '75%'}
+```{r fig.cap="Survival rate of Male/Female Passangers", fig.align="center", out.width = '75%'}
 p1 <- ggplot(full, aes(x = Sex, fill = Sex)) +
   geom_bar(stat='count', position='dodge') + theme_grey() +
   labs(x = 'All data') +
@@ -114,7 +117,7 @@ First plot shows that there are 466 female, 843 male passengers on the training 
 ### PClass
 Let’s visualize the PClass variable.
 
-```{r echo=FALSE,fig.cap="Passenger Class Information", fig.align="center", out.width = '75%'}
+```{r fig.cap="Passenger Class Information", fig.align="center", out.width = '75%'}
 p3 <- ggplot(full, aes(x = Pclass, fill = Pclass)) +
   geom_bar(stat='count', position='dodge') +
   labs(x = 'Pclass, All data') + geom_label(stat='count', aes(label=..count..)) +
@@ -156,7 +159,7 @@ table(full$Sex, full$Title)
 
 Let’s visualize the Title variable.
 
-```{r echo=FALSE,fig.cap="Visualization of Title Variable", fig.align="center", out.width = '75%'}
+```{r fig.cap="Visualization of Title Variable", fig.align="center", out.width = '75%'}
 ggplot(full[!is.na(full$Survived),], aes(x = Title, fill = Survived)) +
   geom_bar(stat='count', position='stack') +
   labs(x = 'Title') +theme_grey()
@@ -313,7 +316,7 @@ We can create a couple of new age-dependent variables: Child and Mother.
 * A mother is someone who is female, older than 18, doesn’t have the ‘Miss’ title and has more than 0 children.
 
 ## Child 
-Let’s look at the relationship between age and survival
+Let’s look at the relationship between age and survival.
 
 ```{r fig.align="center", out.width = '75%', warning=FALSE, message=FALSE}
 ggplot(full[1:891,], aes(Age, fill = factor(Survived))) + 
@@ -445,17 +448,21 @@ The final result for GBM model is **0.76555**.
 
 # RESULTS
 
+Results are evaluated in Kaggle. Scores are shown below.
+
 ```{r}
 random_forrest_model_result <- 0.78947
 svm_model_result <- 0.80382
 gbm_model_result <- 0.76555
 ```
 
-Compare Results
+Let's compare the results in a plot.
 
 ```{r fig.align="center", out.width = '75%', warning=FALSE, message=FALSE}
 barplot(c(random_forrest_model_result, svm_model_result, gbm_model_result), main="Results", names.arg=c("Random Forrest","SVM","GBM"),col = rainbow(3), xlab="Model")
 ```
+
+It is clear that SVM model achives the best results. RandomForrest gets the second best result. Finally GBM model is the third model.
 
 # CONCLUSION
 In this work, we tried to predict the survival of people in the Titanic shipwreck. We created some illustrative data visualizations and used data mining methods. We did some feature engineering and missing value imputation. Finally, we created 3 different models to predict the Survival variable.
