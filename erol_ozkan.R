@@ -12,6 +12,9 @@ library('randomForest')
 library('gridExtra')
 library('ROCR')
 library('corrplot')
+library('fpc')
+library('DMwR2')
+library('dbscan')
 
 ### 3.2	Read Data ###
 train <- read.csv('dataset/train.csv', stringsAsFactors = F, na.strings = c("NA", "")) # Read train dataset.
@@ -146,6 +149,39 @@ hist(mice_output$Age, freq=F, main='MICE Output Data', ylim=c(0,0.04))
 
 full$Age <- mice_output$Age
 sum(is.na(full$Age))
+
+##### 6 OUTLIER DETECTION #####
+### 6.1	DBSCAN ###
+dbscan.outliers <- function(data, ...) {
+  require(fpc, quietly=TRUE)
+  cl <- dbscan(data, ...)
+  posOuts <- which(cl$cluster == 0)
+  list(positions = posOuts,
+       outliers = data[posOuts,],
+       dbscanResults = cl)
+}
+
+outs <- dbscan.outliers(full['Fare'],  eps = 3)
+full[outs$positions,'Fare']
+
+outs <- dbscan.outliers(full['Age'],  eps = 3)
+full[outs$positions,'Age']
+ 
+### 6.2 Torgo, 2007. ###
+outs <- outliers.ranking(scale(full['Fare']))
+full[outs$rank.outliers[1:10],'Fare']
+
+outs <- outliers.ranking(scale(full['Age']))
+full[outs$rank.outliers[1:10],'Age']
+
+### 6.3 Breunig et al., 2000 ###
+out.scores <- lofactor(scale(full['Fare']), 15)
+top_outliers <- order(out.scores, decreasing = T)[1:10]
+full[top_outliers,'Fare']
+
+out.scores <- lofactor(scale(full['Age']), 15)
+top_outliers <- order(out.scores, decreasing = T)[1:10]
+full[top_outliers,'Age']
 
 ##### 6	FEATURE ENGINEERING 2 #####
 ### 6.1	Child ###
