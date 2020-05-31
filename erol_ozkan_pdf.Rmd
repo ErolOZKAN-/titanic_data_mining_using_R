@@ -1,5 +1,5 @@
 ---
-title: "CMP 713 Data Mining - Mining Titanic Dataset"
+title: "CMP 713 Data Mining - Titanic Dataset"
 output:
   pdf_document:
     number_sections: true
@@ -9,20 +9,24 @@ header-includes:
 date: "`r format(Sys.time(), '%d %B %Y')`"
 author: | 
   | Erol ÖZKAN
-  | Hacettepe University, Computer Engineering Department
+  | Hacettepe University
+  | Computer Engineering Department
+  | Ankara, Turkey
   | erolozkan@outlook.com
 abstract: |
-  In this work, we aim to predict what kind of people are likely to survive in the Titanic dataset. In short, we use several data mining methods to predict the survived passengers in the testing dataset. We do explanatory data analysis and create some illustrative data visualization plots. Then, we do feature engineering and missing value imputation to create more meaningful variables. Finally, we build RandomForrest, SVM and GBM models to predict the Survival variable in the testing datasets. We compare these results at the end.
+  In this work, we try to predict what kind of people are likely to survive in the Titanic dataset. We use several data mining methods to predict the survival information of the passengers. We do explanatory data analysis and show some illustrative data visualizations. We do feature engineering and create more meaningful variables. We do missing value imputation and outlier detection. We build RandomForrest, SVM and GBM models to predict the Survival information of the passengers. Finally, we compare these three models at the end of our work. 
 ---
 
 # INTRODUCTION
-The remainder of the document is organized as follows. In Section 2, we explain the Titanic dataset. In Section 3, we explain the EDA. Missing value imputation is explained in Section 5. In Section 4 and Section 6 we show feature engineering steps. Predictive models are explained in the Section 7. Results are shown in Section 8. Finally, we conclude our work in Section 8.
+The remainder of the document is organized as follows. In Section 2, we explain the Titanic dataset. In Section 3, we explain the explanatory data analysis steps. Missing value imputation and outlier detection steps are explained in Section 5 and Section 6. In Section 4 and Section 7 we show the feature engineering steps. Predictive models are explained in the Section 8. Results are shown in Section 9. Finally, we conclude our work in Section 10.
 
 # DATASET
-Titanic dataset is used for this project. It contains the survival information of Titanic ship which sank after colliding with an iceberg on April 15, 1912. It killed 1502 out of 2224 including both all the passengers and its crew. One of the reasons this tragedy led to such loss of life was that there were not enough lifeboats for everyone on the ship. This tragedy resulted in better safety regulations for ships.
+Titanic dataset is used for this project. It contains the survival information of Titanic ship which sank after colliding with an iceberg on April 15, 1912. It killed 1502 out of 2224 including both all the passengers and its crew. One of the reasons this tragedy led to such loss of life was that there were not enough lifeboats for everyone. This tragedy resulted in better safety regulations for ships.
 
 # FIRST STEPS
 ## Import Required Packages
+Firstly, let's import the required packages.
+
 ```{r warning=FALSE, message=FALSE}
 library('ggplot2') 
 library('ggthemes') 
@@ -41,13 +45,20 @@ library('DMwR2')
 library('dbscan')
 ```
 ## Read Data
-Let's read the training and testing datasets. Then, combine them.
+Let's read the training and testing datasets.
 
 ```{r}
-train <- read.csv('dataset/train.csv', stringsAsFactors = F, na.strings = c("NA", "")) # Read train dataset.
-test  <- read.csv('dataset/test.csv', stringsAsFactors = F, na.strings = c("NA", "")) # Read test dataset.
-full  <- bind_rows(train, test) # Concatinate train and test dataset
+train <- read.csv('dataset/train.csv', stringsAsFactors = F, na.strings = c("NA", ""))
+test  <- read.csv('dataset/test.csv', stringsAsFactors = F, na.strings = c("NA", ""))
 ```
+
+Let's combine the training and testing datasets.
+
+```{r}
+full  <- bind_rows(train, test)
+```
+
+Note that Survived variable is missing from the testing dataset.
 
 # EXPLORATORY DATA ANALYSIS
 ## Check Data
@@ -57,7 +68,10 @@ Let's check the dataset.
 str(full)
 ```
 
-There are 1309 observations in total. The training dataset has 891, the test dataset has 418 observations. Note that “Survived” variable is missing from the testing dataset.
+There are 1309 observations in total;
+
+* The training dataset has 891,
+* The testing dataset has 418 observations.
 
 ## Describe Variables
 Description of the variables are shown below.
@@ -73,7 +87,13 @@ Let’s investigate the variables that contain missing values.
 sapply(full, function(x) {sum(is.na(x))}) 
 ```
 
-418 observations is missing the Survived column in the test dataset. Cabin is sparsely populated. Age is missing in some observations. In addition, Embarked is missing two values and Fare one value.
+There are number missing variables in the dataset;
+
+* 418 observations are missing the Survived variable in the testing dataset.
+* Cabin is sparsely populated and has lots of mising values.
+* Age is missing in some observations.
+* Embarked is missing in two observations.
+* Fare is missing in a observation.
 
 ## Explore the Data
 Let’s convert Sex, Pclass, Survived and Embarked variables into factors.
@@ -86,13 +106,13 @@ full$Embarked <- as.factor(full$Embarked)
 ```
 
 ### Survived
-Survived variable describes the survived people.
+Let's visualize the Survived variable. It describes the survival information of the people. 
 
-```{r fig.cap="Survival of People", fig.align="center", out.width = '75%'}
+```{r fig.cap="Survival Information of People", fig.align="center", out.width = '75%'}
 ggplot(full[!is.na(full$Survived),], aes(x = Survived, fill = Survived)) +
   geom_bar(stat='count') +
-  labs(x = 'How many people died and survived on the Titanic?') +
-        geom_label(stat='count',aes(label=..count..), size=7) 
+  labs(x = 'Survival Information of People') +
+    geom_label(stat='count',aes(label=..count..), size=7) 
 ```
 
 It is clear that 549 people died and 342 people survived in the training dataset.
@@ -115,7 +135,10 @@ p2 <- ggplot(full[!is.na(full$Survived),], aes(x = Sex, fill = Survived)) +
 grid.arrange(p1,p2, nrow=1)
 ```
 
-First plot shows that there are 466 female, 843 male passengers on the training and testing data. We can infer from second plot that 81.1% of the men died, only 25.8% of the women died in the training dataset.
+Let’s investigate the plots;
+
+* First plot states that there are 466 female, 843 male passengers.
+* Second plot states that 81.1% of men, 25.8% of women died in the training dataset.
 
 ### PClass
 Let’s visualize the PClass variable.
@@ -139,11 +162,15 @@ p6 <- ggplot(full[!is.na(full$Survived),], aes(x = Pclass, fill = Survived)) +
 grid.arrange(p3, p4, p5, p6, ncol=2)
 ```
 
-First plot states that most people was in the 3rd class. According to second plot, majority of 1st and 2nd class passengers survived, while majority of 3rd class died. It is noticeable in 3rd and 4th charts that almost all women in 1st and 2nd class survived. 
+Let's investigate the plots;
+
+* First plot states that most people was in the 3rd class. 
+* Second plot states that majority of 1st and 2nd class passengers survived, while majority of 3rd class died. 
+* Third and fourth plots state that almost all women in 1st and 2nd class survived. 
 
 # FEATURE ENGINEERING 1
 ## Title
-We can break the Name variable into additional meaningful variables such as; title, name and surname.
+We can break the Name variable into more meaningful variables, including; title, name and surname.
 
 ```{r}
 full$Title <- gsub('(.*, )|(\\..*)', '', full$Name) # Create Title variable
@@ -171,7 +198,10 @@ ggplot(full[!is.na(full$Survived),], aes(x = Title, fill = Survived)) +
 It is clear that Title is highly correlated with Survival information.
 
 ## Family Size
-Family size variable is based on number of siblings/spouse(s) and children/parents. We need to add 1 to include the passenger himself/herself.
+Let's create a Family size variable.
+
+* It is based on number of siblings/spouse(s) and children/parents. 
+* We need to add 1 to include the passenger himself/herself.
 
 ```{r}
 full$Fsize <- full$SibSp + full$Parch + 1
@@ -186,7 +216,9 @@ ggplot(full[1:891,], aes(x = Fsize, fill = factor(Survived))) +
   labs(x = 'Family Size')
 ``` 
 
-It is clear that there is a survival penalty to single passengers and family sizes above 4. We can further make Family variable a categorical variable.
+It is clear that there is a survival penalty to single passengers and family sizes above 4. 
+
+We can further make Family variable a categorical variable.
 
 ```{r fig.align="center", out.width = '75%'}
 full$FsizeD[full$Fsize == 1] <- 'singleton'
@@ -195,10 +227,10 @@ full$FsizeD[full$Fsize > 4] <- 'large'
 mosaicplot(table(full$FsizeD, full$Survived), main='Family Size - Survival', shade=TRUE)
 ``` 
 
-This plot shows that the survival rate of large families is worse than singletons and small families.
+This plot shows that the survival rate of large families is worse than single and small families.
 
 ## Cabin
-Let’s take a look into the Cabin variable.
+Let’s take a look into the Cabin variable.
 
 ```{r}
 full$Cabin[1:28] 
@@ -213,7 +245,7 @@ full$Deck[1:28]
 ``` 
 
 # MISSING VALUE IMPUTATION
-There are some missing values in the dataset. Since, we don’t have many observations, we are better not to delete any observations or columns with missing values. Hence, we are trying to replace missing values with a sensible values.
+There are some missing values in the dataset. Since, we don’t have many observations, we are better not to delete any of the observations or columns with missing values. Hence, we are trying to replace missing values with sensible values.
 
 ## Embarked
 Let’s take a look at Embarked variable.
@@ -235,7 +267,7 @@ embark_fare <- full %>%
   filter(PassengerId != 62 & PassengerId != 830)
 ``` 
 
-Use ggplot2 to visualize Embarked, Class and median Fare variables.
+Let's use ggplot to visualize Embarked, Class and median Fare variables.
 
 ```{r fig.align="center", out.width = '75%', warning=FALSE, message=FALSE}
 ggplot(embark_fare, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
@@ -259,13 +291,13 @@ Similar to Embarked variable, Fare variable on row 1044 has an NA value.
 full[1044, "Fare"]
 ``` 
 
-Let's show the all observation.
+Let's show all of the observation.
 
 ```{r}
 full[1044,]
 ``` 
 
-This passenger departed from Southampton (‘S’). Let’s visualize Fares among same class and embarkment.
+This passenger departed from Southampton (‘S’). Let’s visualize the Fares variable with same class and embarkment values.
 
 ```{r fig.align="center", out.width = '75%', warning=FALSE, message=FALSE}
 ggplot(full[full$Pclass == '3' & full$Embarked == 'S', ], 
@@ -294,7 +326,7 @@ There are many missing Age variable in the dataset. Let’s look into the number
 sum(is.na(full$Age))
 ``` 
 
-There are 263 missing Age variables. We can use mice package for guessing missing Age variables.
+There are 263 missing Age variables. We can use mice package to guess the missing Age variables.
 
 ```{r}
 set.seed(129) # Set a random seed
@@ -314,14 +346,20 @@ Distributions looks very similar, Let’s replace the Age variables with the mic
 
 ```{r}
 full$Age <- mice_output$Age
+``` 
+
+Let's check the Age variable again. 
+
+```{r}
 sum(is.na(full$Age))
 ``` 
+
 # OUTLIER DETECTION
 
-In this section, we will do outlier detection using three different methods; dbscan, Torgo (2007) and Breunig et al. (2000).
+In this section, we are trying to find the outliers. We experiment with three different methods; dbscan, Torgo (2007) and Breunig et al. (2000).
 
 ## DBSCAN
-Let's first define the dbscan.outliers function.
+Let's define the "dbscan.outliers" function.
 
 ```{r}
 dbscan.outliers <- function(data, ...) {
@@ -334,45 +372,58 @@ dbscan.outliers <- function(data, ...) {
 }
 ``` 
 
-### Fare
+Let's investigate the Fare variable.
+
 ```{r}
 outs <- dbscan.outliers(full['Fare'],  eps = 3)
 full[outs$positions,'Fare']
 ``` 
 
-### Age
+Fare values looks reasonable. So, the output of dbscan on the Fare variable didn't reveal any outliers. Let's investigate the Age variable.
+
 ```{r}
 outs <- dbscan.outliers(full['Age'],  eps = 3)
 full[outs$positions,'Age']
 ``` 
 
+There is someone who is aged 80. But, it is not an outlier either.
+
 ## Torgo (2007)
-### Fare
+
+Let's investigate the Fare variable.
+
 ```{r}
 outs <- outliers.ranking(scale(full['Fare']))
 full[outs$rank.outliers[1:10],'Fare']
 ``` 
 
-### Age
+These values are very low, but still possible. So, we will not replace these values. Let's investigate the Age variable.
+
 ```{r}
 outs <- outliers.ranking(scale(full['Age']))
 full[outs$rank.outliers[1:10],'Age']
 ```
 
+These values are not outliers.
+
 ## Breunig et al. (2000)
-### Fare
+Let's investigate the Fare variable.
+
 ```{r}
 out.scores <- lofactor(scale(full['Fare']), 15)
 top_outliers <- order(out.scores, decreasing = T)[1:10]
 full[top_outliers,'Fare']
 ``` 
 
-### Age
+These values are very low, but still possible. So, we will not replace these values. Let's investigate the Age variable.
+
 ```{r}
 out.scores <- lofactor(scale(full['Age']), 15)
 top_outliers <- order(out.scores, decreasing = T)[1:10]
 full[top_outliers,'Age']
 ``` 
+
+These values are not outliers.
 
 # FEATURE ENGINEERING 2
 
@@ -400,7 +451,7 @@ full$Child  <- factor(full$Child)
 ``` 
 
 ## Mother
-Similarly, let’s create a Mother variable.
+Similarly, let’s create a Mother variable.
 
 ```{r}
 full$Mother <- 'Not Mother'
@@ -491,8 +542,6 @@ svm_solutions <- data.frame(PassengerID = test$PassengerId, Survived = svm_predi
 write.csv(svm_solutions, file = 'output/svm_solutions.csv', row.names = F)
 ```
 
-The output of the svm_model and svm_model$results commands are shown below.
-
 The final result for SVM model is **0.80382**.
 
 ## GBM Model
@@ -507,8 +556,6 @@ gbm_predictions <- predict(gbm_model, test)
 gbm_solutions <- data.frame(PassengerID = test$PassengerId, Survived = gbm_predictions)
 write.csv(gbm_solutions, file = 'output/gbm_solutions.csv', row.names = F)
 ```
-
-The output of gbm_model command is shown below.
 
 The final result for GBM model is **0.76555**.
 
@@ -531,4 +578,5 @@ barplot(c(random_forrest_model_result, svm_model_result, gbm_model_result), main
 It is clear that SVM model achives the best results. RandomForrest gets the second best result. Finally GBM model is the third model.
 
 # CONCLUSION
-In this work, we tried to predict the survival of people in the Titanic shipwreck. We created some illustrative data visualizations and used data mining methods. We did some feature engineering and missing value imputation. Finally, we created 3 different models to predict the Survival variable.
+
+In this work, we tried to predict the survival information of the passengers in the Titanic shipwreck. We did explanatory data analysis and showed some illustrative data visualizations. We did feature engineering and create more meaningful variables. We did missing value imputation and outlier detection. Finally, we built RandomForrest, SVM and GBM models to predict the survival information of the passengers.
